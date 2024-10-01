@@ -1,0 +1,73 @@
+---
+title: "group 7"
+author: "Team"
+date: "2024-09-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(readxl)
+
+# Read the Excel file (assuming the data is in the first sheet)
+data1 <- read_excel("C://Users//user//OneDrive - United States International University (USIU)//fall 2024//STA 3010//Assignments//telco.xlsx")
+
+# If your Excel file has multiple sheets and you need to specify a sheet
+# data <- read_excel("C://path_to_file/telco.xlsx", sheet = "Sheet1")
+
+# Load necessary packages
+library(ggplot2)
+library(car)
+# Assume your data is in a dataframe called "data"
+# Fit the OLS model
+model <- lm(longmon ~ tenure + age + address + income + ed + employ + 
+              reside + tollmon + equipmon + cardmon + wiremon + longdistanceovertenure, data = data1)
+
+# Summary of the model
+summary(model)
+
+```
+
+
+```{r}
+# Residuals vs Fitted plot for linearity
+plot(model, which = 1) 
+
+
+```
+```{r}
+# Check VIF
+vif(model)
+
+
+```
+**Independence**
+
+```{r}
+# Durbin-Watson test for independence
+library(lmtest)
+dwtest(model)
+
+
+```
+
+
+```{r}
+# Breusch-Pagan test for homoscedasticity
+bptest(model)
+# Residuals vs Fitted plot
+
+```
+```{r}
+# Q-Q plot for normality
+plot(model, which = 2)
+
+# Shapiro-Wilk test for normality
+shapiro.test(residuals(model))
+
+```
