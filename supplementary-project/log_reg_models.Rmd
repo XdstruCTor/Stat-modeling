@@ -1,6 +1,6 @@
 ---
 title: "Statistical Modeling"
-author: "Group 0"
+author: "Van T"
 date: "2024-10-30"
 output: html_document
 ---
