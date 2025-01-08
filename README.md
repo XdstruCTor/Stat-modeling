@@ -31,7 +31,7 @@ install.packages(c("readxl", "ggplot2", "car", "lmtest"))
 - `log_reg_models.Rmd`: The markdown focus on constructing and applying logistic regressions models in various situaton. The notbook focus on random intercept models (random effect) vs fixed models(fixed effect) and measuring their performances.
 - The first part of the notebook focus on applying log regression on data from Potthoff and Roy paper where they conducted detailed orthodontic measurements on children in order to better understand facial growth patterns and relationships between dental and skeletal development. The work provided a basis for analyzing various facial and dental characteristics, which could help orthodontists in diagnosing and planning treatments for growing children.
 
-Their work contributed to the development of **cephalometric analysis**, which is a critical part of orthodontics for evaluating the positioning of teeth and jaws. Cephalometric analysis helps in understanding how the facial bones and teeth grow and develop over time, particularly in relation to the head and skull. The study laid the groundwork for future research on growth prediction and orthodontic treatment planning.
+- Their work contributed to the development of **cephalometric analysis**, which is a critical part of orthodontics for evaluating the positioning of teeth and jaws. Cephalometric analysis helps in understanding how the facial bones and teeth grow and develop over time, particularly in relation to the head and skull. The study laid the groundwork for future research on growth prediction and orthodontic treatment planning.
 
 ## Usage
 1. Clone the repository:
