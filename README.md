@@ -1,6 +1,9 @@
 # Linear Regression Analysis Script
 
-This repository contains an R script for performing a linear regression analysis on telecom data. The script includes steps for checking model assumptions such as multicollinearity, independence, homoscedasticity, and normality of residuals.
+This repository contains R Markdown files and resources for various statistical modeling projects.
+
+
+The  first R script is for performing linear regression analysis on telecom data.script includes steps for checking model assumptions such as multicollinearity, independence, homoscedasticity, and normality of residuals.
 
 ## Table of Contents
 
@@ -31,3 +34,19 @@ You can install the required packages using the following command:
 
 ```r
 install.packages(c("readxl", "ggplot2", "car", "lmtest"))
+
+
+## second script
+- `log_reg_models.Rmd`: The project focus on constructing and applying logistic regressions models in various situaton. The notbook focus on random intercept models (random effect) vs fixed models(fixed effect) and measuring their performances.
+
+## Usage
+1. Clone the repository:
+
+
+2. Open and run the `.Rmd` files in RStudio.
+
+## .gitignore
+A `.gitignore` file is included to prevent uploading unnecessary or sensitive files such as:
+- Temporary R session files (`.Rhistory`, `.RData`)
+- Cache and log files (`*_cache/`, `*.log`)
+- Output files (`*.html`, `*.pdf`)

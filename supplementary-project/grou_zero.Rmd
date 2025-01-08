@@ -1,0 +1,747 @@
+---
+title: "Statistical Modeling"
+author: "Group 0"
+date: "2024-10-30"
+output: html_document
+---
+
+# EXAMPLE 1
+
+The data we use here if from Potthoff and Roy paper where they conducted detailed orthodontic measurements on children in order to better understand facial growth patterns and relationships between dental and skeletal development. The work provided a basis for analyzing various facial and dental characteristics, which could help orthodontists in diagnosing and planning treatments for growing children.
+
+Their work contributed to the development of **cephalometric analysis**, which is a critical part of orthodontics for evaluating the positioning of teeth and jaws. Cephalometric analysis helps in understanding how the facial bones and teeth grow and develop over time, particularly in relation to the head and skull. The study laid the groundwork for future research on growth prediction and orthodontic treatment planning.
+
+**Outer**:
+
+```         
+- This refers to a formula specifying the grouping of the data. The formula ~Sex suggests that the data will be grouped by       the Sex variable when performing any analyses.
+
+- data is grouped by the Sex variable when performing any analyses
+```
+
+**Formula**:
+
+```         
+- This is the formula used to model the relationship between the variables. The formula distance ~ age | Subject indicates        that distance is being modeled as a function of age, with random effects or individual differences by Subject.
+```
+
+```{r}
+#installing and packages 
+
+#install.packages("lme4") 
+
+#install.packages("dplyr") 
+#install.packages("nlme") 
+#install.packages("withr")
+#install.packages("geepack")
+library(lme4) 
+library(nlme) 
+library(nlme) 
+library(ggplot2)
+library(dplyr) 
+library(lattice) 
+library(geepack)
+#EXAMPLE ONE POTTHOFF-ROY DATA 
+##loading and reading the csv file
+data("Orthodont", package = "nlme")
+
+PRlong <- Orthodont
+ 
+##grouping the gender into male 'M' and female 'F' 
+PRlong$gender <- ifelse( PRlong$Sex == "Male", "M", "F")
+
+### Printing the first 20 elements
+head(PRlong[, c("distance", "age", "Subject", "Sex")], 20)
+### Printing the last 20 elements
+tail(PRlong[, c("distance", "age", "Subject", "Sex")], 20)
+str(PRlong)
+```
+
+Arrange: data is ordered by subject.
+
+Centered Age (age.c.8): age variable is centered around 8 years old.
+
+**Time Variable** : Creates a variable indicating time since age 6, scaled to half-year increments. **Converting to Factors**: Gender and subject variables are converted into factors to facilitate proper treatment where categorical variables are involved
+
+Grouped plot visualize how distance (a dental measurement) changes with age, for different genders and individual subjects:\
+The first a scatter plot with lines, grouping by gender and connecting points by Subject.
+
+The second structures the data using groupedData to define the hierarchical grouping then uses plot to visualize the grouped data, with a focus on individual subjects and grouping by gender.
+
+Both methods more or less yield the same results
+
+```{r}
+###Adjusting the PRlong data set 
+PRlong <- PRlong %>% arrange(Subject) 
+PRlong$age.c.8 <- PRlong$age-8 
+PRlong$age.c.8 
+PRlong$time <- (PRlong$age - 6)/2
+PRlong$time <- as.factor(PRlong$time) 
+PRlong$gender <- as.factor(PRlong$gender) 
+PRlong$gender 
+PRlong$Subject <- as.factor(PRlong$Subject) 
+PRlong$Subject 
+### visualizing the data set 
+xyplot(distance ~ age|gender, data = PRlong, type= "b", lwd = 2, pch = 19, cex = 1.2, groups = Subject)
+###grouping the data 
+distance.grouped <- groupedData(distance ~ age | Subject, outer =~ gender, data = PRlong) 
+###Visualizing the grouped data 
+plot(distance.grouped, display="'subject", outer=TRUE, aspect=1, key=F, xlab="Age", ylab="Dental Growth (mm)", pch=19, cex=0.8, main="Potthoff & Roy (1964) Orthodontic Measurements on Children" )
+```
+
+The first model, **Random_intercept_model**, captures the relationship between distance and predictors (age, gender, and their interaction) while accounting for random intercepts at the Subject level. The second model, **Random_inter_trend**, incorporates a random slope for age alongside random intercepts, allowing subject-specific trends over age.
+
+The predictions (fitted_vals1) from the first model are used for visualization
+
+```{r}
+##Fitting the Random intercept model into the PRlong dataset 
+
+Random_intercept_model <- lme(distance ~ 1+ age + gender + age*gender , random =~ 1| Subject, data = PRlong, method = "ML")
+summary(Random_intercept_model)
+
+##Fitting the Random Intercept trend model into the PRlong dataset.
+
+Random_inter_trend <- lme(distance ~ age + gender + age *gender, random = ~ age | Subject, data=PRlong, method="ML")
+summary(Random_inter_trend) 
+coef(Random_inter_trend)
+
+#creating a dataframe with the fitted values 
+
+PRlong$fitted_vals1 <- fitted(Random_intercept_model) 
+newdata <- data.frame(Subject = PRlong$Subject, age = PRlong$age, gender = PRlong$gender, fitted_vals1= PRlong$fitted_vals1)
+
+# Plotting the predicted values against the original data 
+
+ggplot(PRlong, aes(x = age, y= distance, color = factor(gender)))+
+  geom_point() +
+  geom_line(data = newdata, aes(x = age, y = fitted_vals1, group = Subject), color = "blue") +
+  stat_smooth(method= "Im", aes(group = NULL), se = FALSE, color = "red", size = 1.1)+
+  facet_wrap(~gender, ncol = 4, scales = "free") + labs(title ="Random Intercept Model: dental vs. age and gender", X="age
+                                                        (years)", y= "dental growth in mn ")
+```
+
+## Random Intercept Model:
+
+The model assumes a varying intercept for each subject but a common trend for all subjects. Random effects were specified for the intercept, varying by subject (\~ 1 \| Subject). The standard deviation for the intercept (between subjects) is 1.740851, and the standard deviation for residual is 1.369159.
+
+There is a strong negative correlation between the intercept and age (-0.874), suggesting that as age increases, subjects' growth rate tend to be lower.
+
+## Random Intercept and Trend Model:
+
+This model extends the random intercept model by including a random slope for age.
+
+Random effects show increased variation in intercepts (StdDev: 2.134688) and a small variability in the age slope (StdDev: 0.154139). The negative correlation between the intercept and the slope for age (-0.603) implies that subjects with higher initial intercepts tend to have slower growth rates over age
+
+## Coefficients Table:
+
+# Random Intercept Model:
+
+### Intercept:
+
+-   **Estimate**: 17.37\
+    The intercept is statistically significant (\
+    **t** = 14.68, **p** \< 0.0001), indicating the baseline distance.
+
+### Age:
+
+-   **Estimate**: 0.48\
+    Statistically significant (**t** = 5.10, **p** \< 0.0001), suggesting that for each additional year, the predicted distance increases by 0.48 mm.
+
+### Gender (Male):
+
+-   **Estimate**: -1.03\
+    Not statistically significant (**t** = -0.67, **p** = 0.5082), implying that there isn’t a significant baseline difference in distance between genders.
+
+### Age Interaction:
+
+-   **Estimate**: 0.30\
+    Statistically significant (**t** = 2.49, **p** = 0.0147), indicating that age-related distance growth differs by gender, with males experiencing a slightly higher rate.
+
+------------------------------------------------------------------------
+
+# Random Intercept and Trend Model:
+
+### Intercept:
+
+-   Similar to the intercept model, significant (**t** = 14.42, **p** \< 0.0001).
+
+### Age:
+
+-   **Estimate**: 0.48\
+    Significant (**t** = 4.72, **p** \< 0.0001), showing that age positively affects distance.
+
+### Gender (Male):
+
+-   **Estimate**: -1.03\
+    Not significant (**t** = -0.66, **p** = 0.5155), indicating a lack of baseline difference.
+
+### Age Interaction:
+
+-   **Estimate**: 0.30\
+    Significant (**t** = 2.31, **p** = 0.0237), affirming the interaction effect where male growth rate slightly exceeds female growth rate with age.
+
+------------------------------------------------------------------------
+
+# Comparison Summary:
+
+Both models reveal similar fixed effect estimates, with age and age:gender interaction effects being significant in both cases. However, the Random Intercept model is preferable due to its slightly better model fit and parsimony.
+
+```{r}
+#Visualizing The Random Intercept and trend model. 
+
+PRlong$fitted_val_2 = fitted(Random_inter_trend) 
+
+Newdata_2 <- data.frame(Subject = PRlong$Subject, age = PRlong$age, gender = PRlong$gender, 
+fitted_vals1= PRlong$fitted_vals1, fitted_val_2 = PRlong$fitted_val_2)
+
+ggplot(PRlong, aes(x = age, y = distance, color = factor(gender))) + 
+  geom_point() +
+  geom_line(data = Newdata_2, aes(x = age, y = fitted_val_2, group = Subject), color = "blue") +
+  stat_smooth(method = "lm", aes(group = NULL), se = FALSE, color = "black", size = 1.1) +
+  facet_wrap(~ gender, ncol = 4, scales = "free") + 
+  labs(
+    title = "Random Intercept and Trend Model: Dental vs. Age and Gender", 
+    x = "Age (years)", 
+    y = "Dental Growth in mm"
+  )
+
+#comparing the two models
+
+anova(Random_inter_trend, Random_intercept_model)
+```
+
+AIC (Akaike Information Criterion) and BIC (Bayesian Information Criterion) . Lower values indicate a better-fitting model. The Random Intercept and Trend model has an AIC of 443.8060 and a BIC of 465.2630. The Random Intercept model has an AIC of 440.6391 and a BIC of 456.7318. Since the Random Intercept Model has slightly lower AIC and BIC values, it is favored over the more complex trend model according to these criteria.
+
+Here the log-likelihood of the Random inter trend is slightly higher so it's the best model
+
+For the L-ratio Since the p-value is much higher than common significance levels (e.g., 0.05), there is no strong evidence that adding a random slope for age improves the model significantly.
+
+### EXAMPLE 2
+
+## Sitka Data
+
+```{r}
+library(MASS)     
+library(lattice)  
+library(nlme)     # Provides functions for fitting linear and nonlinear mixed-effects models
+library(ggplot2)  
+
+summary(Sitka)
+```
+
+This provides a summary of the data structure, including statistics like mean, min, max for each variable.
+
+*size* Represents tree size and is a continuous variable. Values range from a minimum of 2.230 to a maximum of 6.630. Median and quartiles (Q1 = 4.345, Q3 = 5.400) indicate the distribution is slightly skewed. Mean (4.841) is close to the median (4.900), suggesting near-normal distribution.
+
+*Time* Time in days since the start of the experiment. Range: 152.0 (minimum) to 258.0 (maximum). Median (201.0) and quartiles indicate most measurements were taken within this time frame.
+
+*tree* Tree is a categorical variable, ranging from 1 to 79 Indicates measurements for 79 individual trees.
+
+*treat* Treatment type is a categorical variable with two levels: control and ozone. control (125 observations): Trees not exposed to ozone. ozone (270 observations): Trees exposed to ozone.
+
+```{r}
+# Visualization of growth over time by treatment
+xyplot(size ~ Time | as.factor(treat), data = Sitka, type = "l", lwd = 2, groups = tree)
+```
+
+The lattice plot displays the growth patterns of tree size over time, grouped by treatment (treat). Each panel corresponds to a specific treatment type (control on the left and ozone on the right). Lines of different colors represent individual trees.
+
+Both control and ozone groups show an upward trend in tree size over time, indicating that trees grow during the observation period.
+
+*Variability* Variability can be observed in the growth rates of the trees with some having faster growth rates compared to others. The distinct growth trajectories for individual trees highlight the need for a mixed-effects model that accounts for tree-level variability (random effects). The spread within each treatment group indicates heterogeneity, which could be due to biological differences or environmental factors not captured by the treatment variable.
+
+```{r}
+# Groups data by tree ID and treatment with hierarchical structure.
+Sitka.grouped <- groupedData(size ~ Time | tree, outer = ~treat, data = Sitka)
+
+# plot to visualize grouped data by tree and treatment
+plot(Sitka.grouped, display = "tree", outer = TRUE, aspect = 1,
+     xlab = "Days", ylab = "Size", pch = 19, cex = 0.8,
+     main = "Sitka Trees - Grouped Data")
+```
+
+The above code produces a detailed plot of tree size over time with separate lines for each tree, grouped by treatment. It highlights the structure and spread of data within treatment groups. The grouping formula indicates that size is modeled as a function of Time with observations being grouped by Tree and an additional outer grouping according to treat.
+
+In the top section of the plot, the numbers (tree IDs) correspond to individual trees in the dataset and each line color represents a unique tree. This helps track individual growth patterns across treatments.
+
+The grouped data plot has two panels for the two treatment groups with the x-axis being the time variable and the y-axis being the size variable. Each line represents the growth trajectory of an individual tree and each point corresponds to a measurement of a tree's size on a specific day.
+
+Observations are grouped by tree. Tree variable is identified as a random effect due to it representing individual variability as each tree's growth might differ due to inherent traits. Treatment serves as a fixed effect as as it’s the primary experimental factor of interest, and its levels are not sampled randomly(ozone and control only). The nested structure of the data along with the identification of fixed and random effects makes the dataset suitable for mixed-effects modeling to account for variability both within and across trees.
+
+**Why not a linear model** A standard linear model assumes that, 1. All observations are independent.
+
+2.  The variability in the data can be fully explained by the fixed effects.
+
+However, in this dataset, 1. Observations are not independent: Measurements within the same tree are correlated (if a tree is large at one time point, it’s likely to remain large at later time points).
+
+2.  Tree-specific variation exists: Some trees grow faster/slower or start at different sizes. A standard linear model would fail to capture this variability, leading to biased estimates and overly narrow confidence intervals.
+
+```{r}
+# model including a quadratic term for Time and interactions with the treatment variable
+curvelinear <- lme(size ~ Time + I(Time^2) + treat + Time * treat,
+                   random = ~Time | tree, data = Sitka.grouped, method = 'ML')
+summary(curvelinear)
+```
+
+A linear mixed-effects model (LME) using the lme function from the nlme package is fitted on the grouped data above.
+
+**size \~ Time + I(Time\^2) + treat + Time \* treat** is the fixed effects formula and it models size as a function of all the other components. Time represents linear effect of time on tree growth. I(Time\^2) is a quadratic term to capture curvilinear growth trends. This is necessary as tree growth is not purely linear over time. treat represents fixed effect for treatment (control and ozone). Time \* treat is the interaction term to test if the effect of Time differs between treatments.
+
+**random = \~Time \| tree** represents the random effects as it specifies that each tree has its own unique intercept and slope for Time. This accounts for tree-to-tree variability in growth trajectories over time.
+
+**method = 'ML'** fits the model using maximum likelihood (ML) estimation.
+
+The model can be said to have a good fit given AIC (Akaike Information Criterion) of -89.30 and BIC (Bayesian Information Criterion) of -53.49.
+
+*random effects results* Intercept StdDev (0.8472) indicates that there is substantial variability in the baseline size (intercept) across individual trees.
+
+Time StdDev (0.0029) indicates that variability in how Time influences growth rates across trees is relatively small.
+
+Correlation (-0.701) being negative suggests that trees with a higher baseline size tend to grow at a slower rate over time.
+
+Residual StdDev (0.1054) represents the variability within each tree that is not explained by the fixed or random effects.
+
+*fixed effects results* Intercept (-1.1873) represents predicted tree size when Time = 0, assuming treat = control. This value is less meaningful since Time values in the dataset range from 152 to 258.
+
+Time (0.0476) signifies a significant positive linear effect of time on size (p-value \< 0.0001). As time increases, tree size tends to grow.
+
+I(Time\^2) (-0.0000815) shows that there is a significant negative quadratic effect (p-value \< 0.0001). This indicates that growth rate slows down over time, leading to a curved growth trajectory.
+
+Treatment (treatozone = 0.2217) represents difference in baseline size between the ozone and control treatments. This effect is not significant (p = 0.3072), meaning treatment does not have a clear impact on the initial size.
+
+Interaction (Time:treatozone = -0.0021) is negative and significant (p = 0.0057). This means that the growth rate of trees in the ozone treatment decreases relative to the control group over time; control trees grow faster over time compared to ozone trees.
+
+*The correlation matrix describes how fixed effect coefficients are correlated*
+
+Residuals summarize how well the model fits the data Min/Max: Range of residuals, indicating that some points deviate significantly. Q1/Q3: Residuals are mostly close to 0, indicating a reasonable model fit.
+
+Number of Observations: 395 Number of Groups (Trees): 79 Each tree has multiple repeated measurements.
+
+```{r}
+# Center the Time variable around 152 to make interpretation easier
+Sitka.grouped$Time.c.152 <- Sitka.grouped$Time - 152
+
+# Refit to see if centering improves interpretability or model fit
+curvelinear_centered <- lme(size ~ Time.c.152 + I(Time.c.152^2) + treat + Time.c.152 * treat,
+                            random = ~Time.c.152 | tree, data = Sitka.grouped, method = 'ML')
+summary(curvelinear_centered)
+```
+
+Time is centered around its minimum value (152 days). This means Time.c.152 = 0 corresponds to the earliest observation in the dataset. Centering ensures the intercept (fixed effect) in the model represents the average tree size at the first observation (Time = 152).
+
+*Changes in random effects result* Centering reduces the correlation between the random intercept and random slope (Time vs Intercept) from -0.701 to -0.247. This means the model disentangles tree-specific baseline sizes and growth rates more effectively.
+
+*Changes in fixed effect result* The intercept in the centered model now represents the estimated tree size at Time = 152, which is easier to interpret compared to the uncentered model (where Time = 0 is arbitrary and outside the range of observations).
+
+AIC/BIC/logLik values are identical for both models indicating that centering does not affect the model's fit but improves the interpretability of coefficients.
+
+```{r}
+# Refit the model without treat to see if model simplicity improves fit
+curvelinear_trimmed <- lme(size ~ Time.c.152 + I(Time.c.152^2) + Time.c.152 * treat,
+                           random = ~Time.c.152 | tree, data = Sitka.grouped, method = 'ML')
+summary(curvelinear_trimmed)
+```
+
+This model refits the centered version (curvelinear_centered) without the treat term as a main effect, focusing only on the interaction effect between Time.c.152 and treat. The AIC, BIC, and log-likelihood are identical to the previous model, suggesting that removing the treat term has no impact on overall model fit. This implies that the main effect of treat (treatment group differences at baseline) is not statistically significant and does not improve the model.
+
+The random effects results are similar to the previous model with no changes. The fixed effects results only reinforce the interpretations of the earlier model.
+
+All in all removing the treat main effect simplifies the model without changing its fit or key conclusions; Ozone does not affect baseline size as treatozone remains non-significant. Ozone does significantly affect growth rate as Time.c.152:treatozone term remains significant.
+
+```{r}
+# visualization of the modeled relationship with both tree-level and treatment-level trends
+ggplot(Sitka.grouped, aes(x = Time, y = size)) +
+  geom_point(aes(color = as.factor(tree)), size = 1) +
+  stat_smooth(aes(color = as.factor(tree)), se = FALSE, method = "lm", formula = y ~ x + I(x^2), lwd = 0.5) +
+  stat_smooth(aes(group = treat), color = "black", se = FALSE, method = "lm",
+              formula = y ~ x + I(x^2), lwd = 1) +
+  facet_wrap(~treat) +
+  scale_x_continuous(name = "Time (Days)", breaks = c(150, 260)) +
+  scale_y_continuous(name = "Size Score (0-10)", limits = c(0, 10)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 14, color = "black"),
+        axis.title = element_text(size = 14, face = "bold"),
+        strip.text.x = element_text(size = 14),
+        legend.position = "none")
+```
+
+The plot shows the growth trajectories of trees under the two treatment conditions: control and ozone exposure. The two plots have a black line that shows the overall growth trend of trees under both treatment conditions. The black trend lines show that trees in the ozone treatment group generally exhibit slower growth compared to the control group, consistent with the model’s finding of a significant Time:treat interaction.
+
+### EXAMPLE 3
+
+```{r}
+# Load necessary libraries
+library(lme4)       # For fitting linear mixed models
+library(nlme)       # For nonlinear mixed-effects models
+library(ggplot2)    # For data visualization
+library(dplyr)      # For data manipulation
+library(lattice)    # For multivariate data visualization
+library(geepack)    # For generalized estimating equations
+View(DNase)
+```
+
+### Load and Explore the DNase Dataset
+
+The DNase dataset is provided in R and includes data on enzyme concentration and density measured under various experimental conditions (Run). We start by loading and exploring the structure of the data.
+
+The dataset includes: - **conc**: Concentration of DNase enzyme. - **density**: Observed density (response variable). - **Run**: The experimental run, treated as a random effect to account for variation across different runs.
+
+```{r}
+library(datasets)
+# Load DNase dataset and view its structure
+data("DNase")
+str(DNase)
+summary(DNase)
+# Preview the first few rows to understand the dataset
+head(DNase)
+```
+
+## The relationship between DNA concentration and density for different runs in the DNase dataset.
+
+**Scatterplot of Density vs. Concentration by Run**\
+- This shows the observed `Density` values against `Concentration` for each `Run`, with different colors representing individual runs.\
+- The data exhibits a similar sigmoidal trend across runs, indicating consistent relationships between `Concentration` and `Density` but with some variation between runs.
+
+**Facetted Scatterplot by Run (Density vs. Concentration)**\
+- Each panel corresponds to a specific run, with the line connecting points showing the trend for `Density` as `Concentration` increases.\
+- The sigmoidal trends are more apparent within each run, with variations in steepness or saturation levels, likely due to biological or experimental variability.
+
+**Facetted Scatterplot by Run (Density vs. Log Concentration)**\
+- Similar to Plot 2, but using the log-transformed `Concentration` on the x-axis.\
+- Log transformation linearizes the initial increase in `Density`, making it easier to observe and model differences across runs. This is useful for fitting models that assume linear relationships in log-transformed variables.
+
+```{r}
+ggplot(data=DNase, aes(x=conc, y=density, color=factor(Run)))+
+  geom_point()+
+  labs(x="Concentration", y="Density", color="Run")+
+  theme_minimal()
+coplot(density~conc| Run, data=DNase, show.given=FALSE, type="b")
+coplot(density~log(conc)|Run, data = DNase, show.given=FALSE, type="b")
+```
+
+## Fit a Nonlinear Logistic Model
+
+We fit a nonlinear logistic model to the data using the `nlme` package. Here, we assume that enzyme density follows a logistic growth model as a function of concentration.
+
+In this model: - **Asym** represents the asymptotic maximum density. - **xmid** represents the concentration at which density reaches half the asymptote. - **scal** is the scale parameter, controlling the steepness of the curve.
+
+Random Effects: Capture variations within groups (e.g., differences among Runs). Fixed Effects: Capture overall trends across all groups (e.g., population-level relationship between conc and density).
+
+Random Effects: Represent deviations of individual groups (Runs) from the fixed effect. Fixed Effects: Represent the average effect for the entire population
+
+**Random Effects**: - The random effects allow `Asym`, `xmid`, and `scal` to vary by `Run`, accounting for between-group variability. - StdDev values for these random effects indicate variability: - `Asym`: 0.039, `xmid`: 0.000098, `scal`: 0.000038. - The residual standard deviation of 0.111 reflects within-group variability.
+
+**Fixed Effects and Correlations**: - The fixed effects estimate the average values of `Asym`, `xmid`, and `scal` across all groups. - Correlations between the parameters are moderate: `xmid` and `Asym` (0.537), `scal` and `xmid` (0.652), and `scal` and `Asym` (0.361), suggesting some dependency among these parameters.
+
+**Residuals**: - Standardized residuals provide an indication of model fit, with most residuals falling within a range that suggests a reasonable fit.
+
+**Observations and Groups**: - The model is based on 176 observations across 11 groups (`Run` levels), indicating that the mixed-effects model captures individual group variability effectively.
+
+This model provides a good fit, as seen from the relatively small residuals and variability in random effects, capturing both the fixed and random effects of `density` on `conc`.
+
+AIC (-247.61) and BIC (-215.90) are criteria for model comparison, with lower values indicating better fit while penalizing complexity. logLik (133.80) is the log-likelihood, reflecting the likelihood of the data under the model; higher values suggest a better fit.
+
+All three parameters (Asym, xmid, and scal) are statistically significant, with p-values close to 0. The t-values are large, indicating that the estimates are much larger than their standard errors, further confirming the significance of the parameters.
+
+```{r}
+# Fit logistic model to DNase data with random effects by 'Run'
+log_model <- nlme(density ~ SSlogis(conc, Asym, xmid, scal), data = DNase,
+                  fixed = Asym + xmid + scal ~ 1, random = Asym + xmid + scal ~ 1 | Run,
+                  start = c(Asym = max(DNase$density), xmid = mean(DNase$conc), scal = 1))
+
+# View the model summary
+summary(log_model)
+```
+
+## Evaluate and Extract Predicted Values
+
+We extract the predicted values from the fitted model, which can help us assess the model's fit to the data.
+
+-   For **Run 1**:
+    -   When **conc** is 0.04882812, the observed **density** is 0.017, and the predicted value is 0.2014246.
+    -   When **conc** increases to 0.19531250, the observed **density** increases to 0.121, while the predicted value is 0.2236853.
+
+These predictions are based on the nonlinear mixed-effects model fitted to the data. The model appears to predict **density** values based on **conc**, and the residual differences (between observed and predicted densities) may reflect the model's accuracy.
+
+```{r}
+# Extract predicted density values from the model
+predicted_density <- fitted(log_model)
+DNase$predicted_density <- predicted_density  # Add predictions to the DNase data frame
+DNase
+```
+
+## Visualize Observed vs. Predicted Densities
+
+Plotting the observed versus predicted values provides a visual check for the model’s fit. We use `ggplot2` to create a faceted plot, showing how the model performs for each experimental run.
+
+The blue points represent observed density values, while the red line shows predicted values from the model. This comparison highlights how well the logistic model captures the relationship between concentration and density across different runs.
+
+The plot shows observed (blue points) vs. predicted (red curves) DNase density across runs. The close alignment indicates the model fits well, capturing density trends across concentrations, with slight deviations highlighting potential refinements.
+
+```{r}
+# Plot observed vs. predicted density with facets by 'Run'
+ggplot(DNase, aes(x = conc, y = density)) + 
+  geom_point(color = "blue", size = 1.5) +                        # Observed data points
+  geom_line(aes(y = predicted_density), color = "red", size = 1) + # Model predictions
+  facet_wrap(~Run, ncol = 2) +                                     # Facet by 'Run'
+  labs(title = "Observed vs Predicted DNase Density by Run",
+       x = "Concentration",
+       y = "Density") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10))
+```
+
+## Model Diagnostics
+
+## Residual Analysis
+
+Residuals help us assess the fit quality by indicating how much the observed data deviate from the model’s predictions.
+
+-   Points should ideally be scattered randomly around zero. Any patterns could indicate potential issues with model fit.
+-   Runs with larger residuals may suggest over- or under-prediction in specific experimental runs.
+
+This residuals vs. fitted values plot examines model assumptions. Most residuals (green dots) are close to the darkred dashed zero line, suggesting good model fit and no severe violations of homoscedasticity. Slight patterns or outliers might indicate areas for improvement.
+
+```{r}
+# Extract deviance residuals and create a diagnostic data frame
+diagnostic_df <- data.frame(
+  Fitted = fitted(log_model),
+  Residuals = residuals(log_model, type = "pearson"),
+  Run = DNase$Run
+)
+
+# Plot residuals vs. fitted values by Run
+ggplot(diagnostic_df, aes(x = Fitted, y = Residuals)) +
+  geom_point(color = "darkgreen", alpha = 0.6) +
+  facet_wrap(~Run, ncol = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkred") +
+  labs(title = "Residuals vs Fitted Values",
+       x = "Fitted Density",
+       y = "Pearson Residuals") +
+  theme_minimal()
+```
+
+# EXAMPLE 4
+
+## Toenail Data
+
+```{r}
+library(HSAUR3)
+library(geepack)
+library(lme4)
+library(visdat)
+library(dplyr)
+
+data("toenail")
+
+# update column names
+colnames(toenail) <- c("id", "outcome", "trt", "month", "visit")
+
+# add numeric y (0/1)
+toenail$y <- as.numeric(toenail$outcome) - 1
+dim(toenail)
+range(toenail$month)
+str(toenail)
+```
+
+The columns are renamed and a sixth column 'y' is added as a numeric conversion of outcome variable.
+
+```{r}
+# Visualize missing data
+vis_miss(toenail)
+```
+
+The function vis_miss under the visdat package is used to visualize missing data and it is observed that there is no missing data in the loaded dataset.
+
+```{r}
+# Fit the GEE model
+marginal <- geeglm(y ~ month + trt:month, data = toenail,
+                   corstr = "exchangeable", id = toenail$id, family = "binomial")
+summary(marginal)
+```
+
+The GEE model examines the relationship between the binary outcome variable (y) and; month (time variable), interaction between month and treatment (month:trtterbinafine). The correlation structure is set to "exchangeable," meaning it assumes the same correlation between observations within each patient (id). Clusters: Each id (patient) forms a cluster. There are 294 clusters, with a maximum of 7 observations per cluster.
+
+Intercept (-0.5782). At the start of treatment (month = 0), the log-odds of severe infection are -0.5782 for the itraconazole group. When converted to probability (p = int / 1 + int), it comes to a probability of 35.9%. So, the probability of severe or moderate infection at baseline for the itraconazole group is about 35.9%.
+
+Effect of month (-0.1713). For the itraconazole group, the log-odds of severe infection decrease by 0.1713 for every additional month of treatment. This indicates a significant improvement over time in reducing the likelihood of severe infection for the itraconazole group.
+
+Interaction (-0.0777). The additional rate of improvement for the terbinafine group compared to the itraconazole group is not statistically significant (p = 0.15). This suggests that both treatments have similar rates of improvement over time.
+
+The exchangeable correlation structure assumes that responses within the same patient (cluster) are equally correlated. This accounts for repeated measurements within individuals, ensuring robust standard errors.
+
+All in all, both month and the intercept are highly significant, while the interaction term (month:trtterbinafine) is not significant. The model demonstrates that time significantly reduces the odds of severe infection, but there is no evidence of a treatment-specific difference in the rate of improvement.
+
+```{r}
+# Fit the GLMM model
+mixed <- glmer(y ~ month + month:trt + (1 | id), data = toenail,
+               family = "binomial", nAGQ = 100)
+summary(mixed)
+```
+
+There is an added random intercept for each individual (id) to account for variation in baseline infection severity across patients when compared to the previous model. Adaptive Gauss-Hermite Quadrature(nAGQ) with 100 points is used for better accuracy in estimation of the random effects.
+
+The random intercept variance of 16 indicates that individuals differ significantly in their baseline log-odds of infection severity.
+
+Intercept (-1.6971). At the start of treatment (month = 0), the log-odds of severe infection are -1.6971 for the itraconazole group. Translated to probability, the probability of severe infection at baseline for the itraconazole group is about 16%.
+
+Effect of month (-0.3885). For the itraconazole group, the log-odds of severe infection decrease by 0.3885 for every additional month of treatment. This corresponds to a significant improvement over time, meaning that the odds of severe infection decrease by approximately 32.2% (1 - 0.678) for each additional month of treatment.
+
+Interaction (-0.1424). The terbinafine group shows a slightly faster rate of improvement compared to the itraconazole group, as the interaction term is negative. The odds of severe infection for the terbinafine group decrease by approximately 13.3% more per month than for the itraconazole group. However, the effect is relatively small, and the p-value (0.028) indicates it is only marginally significant.
+
+Comparing the GLMM model to the GEE model, the fixed effects estimates (for month and the interaction term) are consistent with the GEE model, but the GLMM includes random intercepts, capturing individual variability in baseline severity. The random intercept variance (16) suggests substantial differences among individuals, which the GEE model cannot directly capture. The GLMM explicitly accounts for variability at the patient level, providing a richer understanding of individual differences. The fixed effects still confirm the significant role of time in reducing infection severity and a weak additional effect for the terbinafine group.
+
+# Question 1
+
+The **mm1** model assumes a linear relationship between height and age, with a random intercept for each subject.
+
+Fixed effect estimates: Intercept = 149.37 (fixed effect) Age coefficient = 6.52
+
+Random effects: The variance of the intercept for distinct subject is 65.555 with a standard deviation of 8.097. Residual variance is 1.718 (standard deviation 1.311).
+
+The **mm2** model extends mm1 allowing a random slope of age for each subject. Fixed effect estimates remain similar: Intercept = 149.37 Age coefficient = 6.53
+
+Random effects: Intercept variance (subject) = 65.3192, standard deviati = 8.0820. Random slope variance (age) = 2.8255, sd = 1.6809. Residual variance = 0.4354 (SD 0.6599).
+
+The model **mm2** fits the data better (lower REML criterion) than **mm1** by allowing for individual variability in growth rates. The effect of age is highly significant in both models (p \< 2e-16), meaning there is a strong positive relationship between age and height.
+
+```{r}
+?Oxboys
+str(Oxboys)
+summary(Oxboys)
+library(purrr)
+#mixed model is app
+mm1 <- lmer(height ~age+(1|Subject), data = Oxboys)
+summary(mm1, correlation=FALSE)
+Oxboys%>%
+  split(.$Subject)%>%
+  map(~lm(height~age, data=.))%>%
+  map(coef)-> coefficients
+coefficients <- data.frame(matrix(unlist(coefficients), nrow=length(coefficients), byrow = TRUE), row.names=names(coefficients))
+names(coefficients) <- c("intercept", "age")
+
+ggplot(coefficients, aes(intercept, age, color=row.names(coefficients)))+
+  geom_point()+
+  geom_smooth(method="lm", color='black', se = FALSE)+
+  labs(fill='subject')
+mm2 <- lmer(height~age+
+              (1|Subject)+(0+age|Subject), data=Oxboys)
+summary(mm2, correlation=FALSE)
+```
+
+## Question 2
+
+variance and covariance components of the random effects.
+
+```{r}
+fixef(mm1)
+fixef(mm2)
+ranef(mm2)
+ranef(mm2)
+VarCorr(mm1)
+VarCorr(mm2)
+
+```
+
+## Question 3
+
+```{r}
+dmm1 <- fortify.merMod(mm1)
+dmm1
+ggplot(dmm1, aes(sample=.resid))+geom_qq()+geom_qq_line()+ theme_minimal()
+ggplot(dmm1, aes(sample = .resid)) +
+  geom_qq() + 
+  geom_qq_line() +
+  facet_wrap(~ Subject) +  # Creates separate plots for each subject
+  ggtitle("Q-Q Plot of Residuals by Subject") +
+  theme_minimal()
+
+```
+
+## Question 4
+
+TVset level behaves differently across Assessors in terms of its effect on Coloursaturation, the second model (Coloursaturation \~ TVset \* Picture + (0 + TVset \| Assessor)) is a better fit as it includes random slopes for TVset levels. \## Random effects Model 1: Coloursaturation \~ TVset \* Picture + (1 \| Assessor)
+
+Random intercept for Assessor has a variance of 0.2708 (Std.Dev. 0.5204). Residual variance: 1.3102 (Std.Dev. 1.1447). Model 2: Coloursaturation \~ TVset \* Picture + (0 + TVset \| Assessor
+
+Random slopes for TVset levels: TVsetTV1: Var = 0.7321 (Std.Dev. 0.8556). TVsetTV2: Var = 0.8434 (Std.Dev. 0.9184). TVsetTV3: Var = 0.6859 (Std.Dev. 0.8282).
+
+## Fixed effects
+
+Intercept: Estimate = 7.1438, significant with p-value \< 2e-16.
+
+TVset Effects: TVsetTV2: Estimate = 2.6813, p-value = 4.22e-10 (highly significant).
+
+TVsetTV3: Estimate = 0.4125, p-value = 0.3095 (not significant).
+
+### ANOVA Tables:
+
+Main effects: TVset: Highly significant (F-value 84.5327, p-value \< 2e-16).
+
+Picture: Significant (F-value 2.8535, p-value = 0.03879).
+
+TVset:Picture interaction: Not significant (p-value = 0.11100)
+
+```{r}
+library(lmerTest)
+?TVbo
+str(TVbo)
+m23 <- lmer(Coloursaturation~TVset*Picture+(1|Assessor), data=TVbo)
+summary(m23, correlation=FALSE)
+anova(m23, type='III')
+anova(m23, type = 'II')
+anova(m23, type = 'I')
+interaction.plot(TVbo$TVset, TVbo$Picture, response=TVbo$Coloursaturation)
+m24<- lmer(Coloursaturation~TVset*Picture+(0+TVset|Assessor), data=TVbo)
+summary(m24, correlation=FALSE)
+```
+
+The four lines seen in the plot represent how saturation is changing with to different TVset accross the 4 four different colors
+
+## Question 5
+
+Using a generalized linear mixed model (glmer) with a Poisson link function: \## Random Effects:
+
+BROOD (Intercept) has variance 0.5924, with a standard deviation of 0.7697. LOCATION (Intercept) has variance 0.3297, with a standard deviation of 0.5742.
+
+## Fixed Effects:
+
+Represents the baseline log count of TICKS (Intercept): Estimate = 11.3508,
+
+Std. Error = 1.6115, z value = 7.044, p-value \< 2e-16.
+
+YEAR96: Estimate = 1.1656, Std. Error = 0.2298, z value = 5.072, p-value \< 3.93e-7. Indicates a significant increase in the log count of TICKS in YEAR96 compared to the reference year.
+
+YEAR97: Estimate = -0.9779, Std. Error = 0.2548, z value = -3.838, p-value = 0.000124.
+
+This represents a significant decrease in the log count of TICKS in YEAR97
+
+```{r}
+
+library(boot.pval)
+?grouseticks
+summary(grouseticks)
+str(grouseticks)
+#Scale down variable Height by diving by 100
+T <- grouseticks$HEIGHT/100
+
+#Loc and broof is used as random effect variables
+
+mll <- glmer(TICKS~YEAR+T+(1|LOCATION)+(1|BROOD), family=poisson(link='log'), data=grouseticks)
+
+summary(mll, correlation=FALSE)
+boot_summary(mll, type="perc", R=20)
+
+```
+
+```{r}
+# Boxplot of tick counts by location
+ggplot(grouseticks, aes(x = LOCATION, y = TICKS)) +
+  geom_boxplot(color = "black", fill = "lavender", alpha = 0.6) +
+  labs(title = "Tick Counts by Location", x = "Location", y = "Number of Ticks") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme_minimal()
+
+```
+
+The model indicates that **YEAR96** significantly increases the number of ticks compared to the reference year, while **YEAR97** reduces the number. Height (T) has a significant negative effect on tick count, where taller individuals (scaled by 100) tend to have fewer ticks
