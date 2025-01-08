@@ -35,8 +35,8 @@ You can install the required packages using the following command:
 install.packages(c("readxl", "ggplot2", "car", "lmtest"))
 
 
-## second script
-- `log_reg_models.Rmd`: The project focus on constructing and applying logistic regressions models in various situaton. The notbook focus on random intercept models (random effect) vs fixed models(fixed effect) and measuring their performances.
+## the script in supplementary-project
+- `log_reg_models.Rmd`: The markdown focus on constructing and applying logistic regressions models in various situaton. The notbook focus on random intercept models (random effect) vs fixed models(fixed effect) and measuring their performances.
 
 ## Usage
 1. Clone the repository:
