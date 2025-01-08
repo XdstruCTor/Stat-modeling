@@ -1,1 +1,13 @@
 *.xlsx
+# R-related files
+.Rhistory
+.RData
+.Rproj.user/
+
+# Temporary files
+*_cache/
+*.log
+
+# Output files
+*.html
+*.pdf
