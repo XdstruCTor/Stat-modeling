@@ -1,6 +1,6 @@
-# Linear Regression Analysis Script
+# Log Reg models and Linear reg models
 
-This repository contains R Markdown files and resources for various statistical modeling projects.
+This repository contains R Markdown files and resources for various statistical modeling approach.
 
 
 The  first R script is for performing linear regression analysis on telecom data.script includes steps for checking model assumptions such as multicollinearity, independence, homoscedasticity, and normality of residuals.
@@ -32,7 +32,6 @@ To run this script, you need:
 
 You can install the required packages using the following command:
 
-```r
 install.packages(c("readxl", "ggplot2", "car", "lmtest"))
 
 
