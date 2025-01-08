@@ -5,16 +5,8 @@ This repository contains R Markdown files and resources for various statistical 
 
 The  first R script is for performing linear regression analysis on telecom data.script includes steps for checking model assumptions such as multicollinearity, independence, homoscedasticity, and normality of residuals.
 
-## Table of Contents
 
-- [Overview](#overview)
-- [Requirements](#requirements)
-- [Usage](#usage)
-- [Analysis Steps](#analysis-steps)
-- [Results Interpretation](#results-interpretation)
-- [License](#license)
-
-## Overview
+## OLS script Overview
 
 The script performs the following analyses:
 - Fits an Ordinary Least Squares (OLS) regression model.
@@ -35,7 +27,7 @@ You can install the required packages using the following command:
 install.packages(c("readxl", "ggplot2", "car", "lmtest"))
 
 
-## the script in supplementary-project
+## Log Reg Script Overview (supplementary project)
 - `log_reg_models.Rmd`: The markdown focus on constructing and applying logistic regressions models in various situaton. The notbook focus on random intercept models (random effect) vs fixed models(fixed effect) and measuring their performances.
 
 ## Usage
